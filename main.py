@@ -15,69 +15,100 @@ import climate_id as clid
 import utility_functions as uf
 
 
+def var_to_prebas_tran(df,var):
+    var_df = df[['time', 'climID', var]]
+    var_df = var_df.pivot(index='climID', columns='time', values=var)
+    var_df = var_df.rename(columns={x:y for x,y in zip(var_df.columns, range(1,len(var_df.columns)+1))})
+    var_df = var_df.add_prefix('V')
+    return var_df
+
+def kelvin_to_celsius(df, vars):
+    for var in vars:
+        df[var] = df[var]-273.15
+    return df
 
 def main():
-    # DEFINE NECESSARY FILE PATHS
-    var_path = f'data/netcdf/vars'
-    sites_path = f"data/csv/coords.csv"
-    temp_path = f'data/csv/temp'
-    nan_removal_path = f'{temp_path}/nan_removal.csv'
-    nans_removed_path = f'{temp_path}/nans_removed.csv'
-    sites_ids_path = f'{temp_path}/sites_id.csv'
-    filtered_df_path = f'{temp_path}/filtered_df.csv'
-    prebas_path = f'{temp_path}/prebas.csv'
-
-    # DEFINE VARIABLE NAMES
-    rh = 'hu'
-    tair = 'tg'
-    t_max = 'tx'
-    t_min = 'tn'
-    qq = 'qq'
-    precip = 'rr'
-    rss = 'rss'
-
-    # LIST OF VARIABLES. EACH ITEM INCLUDES VARIABLE NAME AND AGGREGATE FUNCTION 
-    vars = [[rh, vh.get_means], [tair, vh.get_means], [t_max, vh.get_frost_days], 
-            [qq, vh.get_par], [precip, vh.get_sums], [t_min, vh.get_means], [t_max, vh.get_means]]
-
-    # STEP 1: PREPARE DF ACCORDING TO BOUNDS
-    sites_df = pd.read_csv(sites_path)
-    bnds = uf.get_bounds(sites_df)
-    data = nh.get_all_vars_netcdf_with_bounds(vh.process_vars_and_aggregate, vars, var_path, bnds)
-    df = nh.get_nan_removal_df(data)
-    uf.write_df_to_csv(df, nan_removal_path)
-
-    # STEP 2: REMOVE ALL CLIMIDS WITH NANS 
-    df = nh.remove_nan_ids(nan_removal_path)
-    print(df)
-    uf.write_df_to_csv(df, nans_removed_path)
-
-    # STEP 3: MAKE REFERENCE DF AND ASSIGN CLIMIDS FOR SITES
-    ref_df = nh.get_ref_df(nans_removed_path)
-    print('ref_df')
-    print(ref_df)
-    print('Writing climate ids for sites...')
-    sites_df = clid.climateIDs_for_sites_from_files(ref_df, sites_path)
-    print('Done.')
-    sites_df['climID'] = sites_df['climID'].astype(int)
-    print(sites_df)
-    uf.write_df_to_csv(sites_df, sites_ids_path)
-
-    # STEP 4: FILTER CLIMATE DATA BY SITE DATA CLIMATE IDS
-    df = nh.get_filtered_df(nans_removed_path, sites_ids_path)
-    print(df)
-    uf.write_df_to_csv(df, filtered_df_path)
-
-    # STEP 5: CALCULATE VPD AND REARRANGE COLUMNS
-    df = pd.read_csv(filtered_df_path)
-    df = vh.get_vpd(df, tair, rh)
-    df = df.rename(columns={tair : 'tair', precip:'precip', t_max: 't_max', t_min: 't_min'})
-    df = df.drop(columns=[rh, rss])
-    df = uf.year_and_month_to_cols(df)
-    cols = ['year', 'month', 'climID', 'lat', 'lon', 'frost_days', 'tair', 'precip', 'par', 'vpd', 't_min', 't_max']
+    prebas_path = f'data/csv/climate/historical_climate_data.csv'
+    df = pd.read_csv(prebas_path, parse_dates=['time'])
+    df = df.rename(columns={'PlgID' : 'siteID', 'XLON':'lon', 'YLAT':'lat', 'rsds':'qq', 'hurs': 'rh' , 'tas' : 'tair', 'prcp':'precip', 'tasmax': 't_max', 'tasmin': 't_min'})
+    # GET CO2 VALUES
+    co2_csv_path = f'data/csv/climate/co2_annual_1850_2021.csv'
+    co2_df = pd.read_csv(co2_csv_path)
+    co2_df = co2_df.loc[co2_df.year.isin(df.time.dt.year)]
+    co2_df.drop(co2_df.tail(4).index, inplace=True)
+    new = pd.DataFrame({'year':range(2018,2100)})
+    new['CO2'] = 405.22
+    co2_df = pd.concat([co2_df, new])
+    df['year'] = df.time.dt.year
+    df = df.merge(co2_df)
+    df.drop(['year'], axis=1)
+    # ASSIGN CLIMIDS
+    df['climID'] = df.groupby(['siteID']).ngroup()+1
+    # GET RSS FROM QQ
+    df = df.assign(rss = lambda x: x['qq'] *0.0864)
+    # GET PAR FROM RSS
+    df = df.assign(par = lambda x: x['rss'] *0.44*4.56)
+    # REARRANGE
+    df = df.drop(columns=['rh', 'rss'])
+    cols = ['time', 'siteID', 'climID', 'lat', 'lon', 'tair', 'precip', 'par', 'vpd', 't_min', 't_max', 'CO2']
     df = uf.rearrange_df(df, cols)
+    # CONVERT [kg.m-2.s-1] to mm/d (86400 seconds in day)
+    df['precip'] = df['precip'] * 86400
+    # CONVERT TEMPERATURES FROM KELVIN TO CELSIUS
+    df = kelvin_to_celsius(df, ['tair', 't_max', 't_min'])
+    # df['CO2'] = 380
+    df = df.drop(['t_min', 't_max', 'lat', 'lon'], axis=1)
+    df = df.rename(columns={"par":"PAR","tair":"TAir","vpd":"VPD","precip":"Precip"})
+    cols = ["time","climID","PAR","TAir","VPD","Precip","CO2"]
+    df = uf.rearrange_df(df, cols)
+    path = f'data/csv/climate/historical_prebas.csv'
+    uf.write_df_to_csv(df, path)
+
+    # WRITE TRAN FILES
+    prebas_path = f'data/csv/climate/historical_prebas.csv'
+    df = pd.read_csv(prebas_path, parse_dates=['time'])
+    vars = ['PAR', 'TAir', 'Precip', 'VPD', 'CO2']
+    for v in vars:
+        path = f'data/csv/climate/tran/{v}_tran.csv'
+        var_tran = var_to_prebas_tran(df, v)
+        print(var_tran)
+        uf.write_df_to_csv(var_tran, path)
+
+  
+
     print(df)
-    uf.write_df_to_csv(df, prebas_path)
+
+
+
+    # df['DOY'] = df['time'].dt.dayofyear
+    # CONVERT [kg.m-2.s-1] to mm/d (86400 seconds in day)
+    # df['precip'] = df['precip'] * 86400
+    # df['CO2'] = 380
+    # df = df.drop(['t_min', 't_max', 'lat', 'lon', 'time'], axis=1)
+    # df = df.rename(columns={"plotID":"siteID","par":"PAR","tair":"TAir","vpd":"VPD","precip":"Precip"})
+    # cols = ["climID","DOY","PAR","TAir","VPD","Precip","CO2"]
+    # df = uf.rearrange_df(df, cols)
+    # prebas_example_path = f'data/csv/forest_nav_prebas_example.csv'
+    # uf.write_df_to_csv(df, prebas_path)
+
+
+    # df = df.rename(columns={'PlgID' : 'plotID', 'XLON':'lon', 'YLAT':'lat', 'rsds':'qq', 'tas' : 'tair', 'prcp':'precip', 'tasmax': 't_max', 'tasmin': 't_min'})
+    # df = df.assign(rss = lambda x: x['qq'] *0.0864)
+    # df = df.assign(par = lambda x: x['rss'] *0.44*4.56)
+    # df = vh.get_vpd(df, 'tair', 'rh')
+    # df = df.drop(columns=['rh', 'rss'])
+    # cols = ['time', 'plotID', 'climID', 'lat', 'lon', 'tair', 'precip', 'par', 'vpd', 't_min', 't_max']
+    # df = uf.rearrange_df(df, cols)
+    # print(df)
+    # uf.write_df_to_csv(df, prebas_path)
+    # print(df.isnull().values.any())
+    
+
+       
+
+
+
+    
 
     
 
