@@ -5,6 +5,7 @@ import os
 
 
 
+
 def get_files_in_folder(path):
     files = []
     for filename in os.listdir(path):
@@ -64,3 +65,4 @@ def convert_copernicus_to_df(dataset):
     new = df.reset_index(level=('index'))
     new.rename(columns={'latitude':'lat', 'longitude':'lon', 'index': 'climID'}, inplace=True)
     return new
+

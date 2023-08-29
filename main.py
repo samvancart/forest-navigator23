@@ -15,38 +15,13 @@ import climate_id as clid
 import utility_functions as uf
 
 
-def var_to_prebas_tran(df,var):
-    var_df = df[['time', 'climID', var]]
-    var_df = var_df.pivot(index='climID', columns='time', values=var)
-    var_df = var_df.rename(columns={x:y for x,y in zip(var_df.columns, range(1,len(var_df.columns)+1))})
-    var_df = var_df.add_prefix('V')
-    return var_df
 
-def kelvin_to_celsius(df, vars):
-    for var in vars:
-        df[var] = df[var]-273.15
-    return df
-
-def prebas_out_var_to_long_form(var, speciesID=2, nyears=38):
-    df_path = f'data/csv/prebas_out/{var}.csv'
-    df = pd.read_csv(df_path)
-    # DROP THINNING INFO (CHECK YEARS)
-    df.drop(df.iloc[:, nyears+1:], inplace=True, axis=1)
-    # DROP FIRST COLUMN
-    df.drop(df.iloc[:,:1], inplace=True, axis=1)
-    # STRIP COLUMN NAMES FROM X1.stand to X1
-    df.rename(columns=lambda x: x.split('.')[0].strip(), inplace=True)
-    df['climID'] = df.index+1
-    df['speciesID'] = speciesID
-    df = pd.wide_to_long(df, stubnames='X', i=['climID', 'speciesID'], j='year')
-    df.rename(columns={'X': var}, inplace=True)
-    return df
-
+# FIX THIS
 def join_dataframes(vars):
     dfs = []
     new = pd.DataFrame()
     for i, var in enumerate(vars):
-        df = prebas_out_var_to_long_form(var)
+        df = vh.prebas_out_var_to_long_form(var)
         dfs.append(df)
         if i == 0:
             new = dfs[0]
@@ -58,17 +33,53 @@ def join_dataframes(vars):
     return new
 
 
+
 def main():
+
+    soil_path = f'data/csv/soil/soil_data_ids.csv'
+    soil_df = pd.read_csv(soil_path)
+    soil_df = soil_df.sort_values(['climID'])
+    print(soil_df)
+
+    
+
+    # WILTING POINT AND FIELD CAPACITY
+    # soil_df['WP'] = soil_df.apply(lambda row: vh.get_wilting_point(vh.get_soil_param_a(row['sand'], row['clay']),vh.get_soil_param_b(row['sand'],row['clay'])),axis=1)
+    # soil_df['FC'] = soil_df['AWC'] + soil_df['WP']
+    # print(soil_df)
+
+    # CONCAT PREBAS OUT SPECIES FRAMES
+    # pine_path = f'data/csv/prebas_out/out_pine.csv'
+    # spruce_path = f'data/csv/prebas_out/out_spruce.csv'
+    # birch_path = f'data/csv/prebas_out/out_birch.csv'
+    # beech_path = f'data/csv/prebas_out/out_beech.csv'
+    # pine = pd.read_csv(pine_path)
+    # spruce = pd.read_csv(spruce_path)
+    # birch = pd.read_csv(birch_path)
+    # beech = pd.read_csv(beech_path)
+
+    # df = pd.concat([pine,spruce,birch,beech])
+    # print(df)
+
+    # path = f'data/csv/prebas_out/prebas_out_all_species.csv'
+    # uf.write_df_to_csv(df, path, index=False)
+
+
+    # PREBAS OUTPUT TO DATAFRAME
+    # df_path = f'data/csv/prebas_out/out_4_0_0.csv'
+    # df = pd.read_csv(df_path)
     # vars = ['ba','dbh','gross_growth','h','n','npp','v']
     # new = join_dataframes(vars)
     # print(new)
     # path = f'data/csv/prebas_out/prebas_out_vars.csv'
     # uf.write_df_to_csv(new, path, index=True)
 
-    prebas_path = f'data/csv/climate/historical_climate_data.csv'
-    df = pd.read_csv(prebas_path, parse_dates=['time'])
-    print(df)
-    
+
+    # CLIMATE DATA TO PREBAS
+    # prebas_path = f'data/csv/climate/historical_climate_data.csv'
+    # df = pd.read_csv(prebas_path, parse_dates=['time'])
+    # print(df)
+
     # df = df.rename(columns={'PlgID' : 'siteID', 'XLON':'lon', 'YLAT':'lat', 'rsds':'qq', 'hurs': 'rh' , 'tas' : 'tair', 'prcp':'precip', 'tasmax': 't_max', 'tasmin': 't_min'})
     # # GET CO2 VALUES
     # co2_csv_path = f'data/csv/climate/co2_annual_1850_2021.csv'
@@ -94,13 +105,13 @@ def main():
     # # CONVERT [kg.m-2.s-1] to mm/d (86400 seconds in day)
     # df['precip'] = df['precip'] * 86400
     # # CONVERT TEMPERATURES FROM KELVIN TO CELSIUS
-    # df = kelvin_to_celsius(df, ['tair', 't_max', 't_min'])
+    # df = vh.kelvin_to_celsius(df, ['tair', 't_max', 't_min'])
     # # df['CO2'] = 380
     # df = df.drop(['t_min', 't_max', 'lat', 'lon'], axis=1)
     # df = df.rename(columns={"par":"PAR","tair":"TAir","vpd":"VPD","precip":"Precip"})
-    # cols = ["time","climID","PAR","TAir","VPD","Precip","CO2"]
+    # cols = ["time","siteID","climID","PAR","TAir","VPD","Precip","CO2"]
     # df = uf.rearrange_df(df, cols)
-    # path = f'data/csv/climate/historical_prebas.csv'
+    # path = f'data/csv/climate/historical_prebas_sites.csv'
     # uf.write_df_to_csv(df, path)
 
     # # WRITE TRAN FILES

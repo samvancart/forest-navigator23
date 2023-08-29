@@ -1,5 +1,7 @@
 import xarray as xr
 import numpy as np
+import pandas as pd
+import math
 from functools import partial
 
 import utility_functions as uf
@@ -125,3 +127,47 @@ def process_vars_and_aggregate(vars, lat_bnds, lon_bnds, var_path):
         print(f'{v[0]} done.')
 
     return netcdfs
+
+
+def var_to_prebas_tran(df,var):
+    var_df = df[['time', 'climID', var]]
+    var_df = var_df.pivot(index='climID', columns='time', values=var)
+    var_df = var_df.rename(columns={x:y for x,y in zip(var_df.columns, range(1,len(var_df.columns)+1))})
+    var_df = var_df.add_prefix('V')
+    return var_df
+
+def kelvin_to_celsius(df, vars):
+    for var in vars:
+        df[var] = df[var]-273.15
+    return df
+
+def prebas_out_var_to_long_form(var, speciesID=2, nyears=38):
+    df_path = f'data/csv/prebas_out/{var}.csv'
+    df = pd.read_csv(df_path)
+    # DROP THINNING INFO (CHECK YEARS)
+    df.drop(df.iloc[:, nyears+1:], inplace=True, axis=1)
+    # DROP FIRST COLUMN
+    df.drop(df.iloc[:,:1], inplace=True, axis=1)
+    # STRIP COLUMN NAMES FROM X1.stand to X1
+    df.rename(columns=lambda x: x.split('.')[0].strip(), inplace=True)
+    df['climID'] = df.index+1
+    df['speciesID'] = speciesID
+    df = pd.wide_to_long(df, stubnames='X', i=['climID', 'speciesID'], j='year')
+    df.rename(columns={'X': var}, inplace=True)
+    return df
+
+
+# PARAMETERS A AND B FOR 
+# Saxton Equations to determine soil physical properties
+# FROM: https://www.researchgate.net/publication/259198849_Saxton_Equations_to_determine_soil_physical_properties_in_MSExcel_format
+def get_soil_param_a(sand, clay):
+    result = math.exp(-4.396-0.0715*clay-0.000488*sand**2-0.00004285*sand**2*clay)
+    return result
+
+def get_soil_param_b(sand, clay):
+    result = -3.14-0.00222*clay**2-0.00003484*sand**2*clay
+    return result
+
+def get_wilting_point(a, b):
+    result = (15/a)**(1/b) * 1000
+    return result
