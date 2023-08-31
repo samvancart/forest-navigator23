@@ -16,37 +16,43 @@ import utility_functions as uf
 
 
 
-# FIX THIS
-def join_dataframes(vars):
-    dfs = []
-    new = pd.DataFrame()
-    for i, var in enumerate(vars):
-        df = vh.prebas_out_var_to_long_form(var)
-        dfs.append(df)
-        if i == 0:
-            new = dfs[0]
-            dfs=[]
-        else:
-            new = new.join(dfs[0])
-            dfs = []
-
-    return new
-
-
-
 def main():
+
+    # df_path = f'data/csv/climate/historical_prebas_sites.csv'
+    # df = pd.read_csv(df_path)
+    site_path = f'data/csv/site/plot_data.csv'
+    sites = pd.read_csv(site_path)
+    print(sites)
+    sites = sites.where(sites['domain'] == 'Picus_Prebas').dropna()
+    sites['PlgID'] = sites['PlgID'].astype(int)
+    # df = df.where(df['siteID'].isin(sites['PlgID'])).dropna()
+    # df[['siteID','climID']] = df[['siteID','climID']].astype(int)
+    # print(df)
+    # path = f'data/csv/climate/historical_only_prebas_picus_sites.csv'
+    # uf.write_df_to_csv(df, path, index=False)
+
+
 
     soil_path = f'data/csv/soil/soil_data_ids.csv'
     soil_df = pd.read_csv(soil_path)
     soil_df = soil_df.sort_values(['climID'])
+    soil_df = soil_df.where(soil_df['siteID'].isin(sites['PlgID'])).dropna()
+    soil_df[['siteID','climID']] = soil_df[['siteID','climID']].astype(int)
     print(soil_df)
+    # path = f'data/csv/soil/soil_data_wp_picus_prebas_sites.csv'
+    # uf.write_df_to_csv(soil_df, path, index=False)
 
-    
+    # print(soil_df[['WP','FC','AWC']])
 
-    # WILTING POINT AND FIELD CAPACITY
+
+    # # WILTING POINT AND FIELD CAPACITY FROM WILTING POINT 
     # soil_df['WP'] = soil_df.apply(lambda row: vh.get_wilting_point(vh.get_soil_param_a(row['sand'], row['clay']),vh.get_soil_param_b(row['sand'],row['clay'])),axis=1)
     # soil_df['FC'] = soil_df['AWC'] + soil_df['WP']
-    # print(soil_df)
+    # # WILTING POINT AND FIELD CAPACITY FROM FIELD CAPACITY
+    # soil_df['FC'] = soil_df.apply(lambda row: vh.get_field_capacity(vh.get_soil_param_a(row['sand'], row['clay']),vh.get_soil_param_b(row['sand'],row['clay'])),axis=1) 
+    # soil_df['WP'] = soil_df['FC'] - soil_df['AWC']
+    # # print(soil_df)
+    # print(soil_df[['WP','FC','AWC']])
 
     # CONCAT PREBAS OUT SPECIES FRAMES
     # pine_path = f'data/csv/prebas_out/out_pine.csv'
@@ -69,6 +75,20 @@ def main():
     # df_path = f'data/csv/prebas_out/out_4_0_0.csv'
     # df = pd.read_csv(df_path)
     # vars = ['ba','dbh','gross_growth','h','n','npp','v']
+    # dfs = []
+    # for var in vars:
+    #     df_path = f'data/csv/prebas_out/{var}.csv'
+    #     df = pd.read_csv(df_path)
+    #     # print(df)
+    #     df = vh.prebas_out_var_to_long_form(df,var)
+    #     dfs.append(df)
+
+    # new = dfs[0].join(dfs[1:])
+    # print(new)
+    # new = new.melt(ignore_index=False)
+    # print(new)
+
+
     # new = join_dataframes(vars)
     # print(new)
     # path = f'data/csv/prebas_out/prebas_out_vars.csv'
@@ -114,13 +134,13 @@ def main():
     # path = f'data/csv/climate/historical_prebas_sites.csv'
     # uf.write_df_to_csv(df, path)
 
-    # # WRITE TRAN FILES
-    # prebas_path = f'data/csv/climate/historical_prebas.csv'
+    # WRITE TRAN FILES
+    # prebas_path = f'data/csv/climate/historical_only_prebas_picus_sites.csv'
     # df = pd.read_csv(prebas_path, parse_dates=['time'])
     # vars = ['PAR', 'TAir', 'Precip', 'VPD', 'CO2']
     # for v in vars:
     #     path = f'data/csv/climate/tran/{v}_tran.csv'
-    #     var_tran = var_to_prebas_tran(df, v)
+    #     var_tran = vh.var_to_prebas_tran(df, v)
     #     print(var_tran)
     #     uf.write_df_to_csv(var_tran, path)
 

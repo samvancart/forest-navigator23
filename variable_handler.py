@@ -141,9 +141,8 @@ def kelvin_to_celsius(df, vars):
         df[var] = df[var]-273.15
     return df
 
-def prebas_out_var_to_long_form(var, speciesID=2, nyears=38):
-    df_path = f'data/csv/prebas_out/{var}.csv'
-    df = pd.read_csv(df_path)
+def prebas_out_var_to_long_form(df, var, speciesID=2, nyears=38):
+    
     # DROP THINNING INFO (CHECK YEARS)
     df.drop(df.iloc[:, nyears+1:], inplace=True, axis=1)
     # DROP FIRST COLUMN
@@ -170,4 +169,8 @@ def get_soil_param_b(sand, clay):
 
 def get_wilting_point(a, b):
     result = (15/a)**(1/b) * 1000
+    return result
+
+def get_field_capacity(a, b):
+    result = (0.33333/a)**(1/b) * 1000
     return result
