@@ -14,33 +14,79 @@ import nan_handler as nh
 import climate_id as clid
 import utility_functions as uf
 
-
+def rename_netcdf_longFormat_coords(data, coord_names):
+    dim_coords = list(data.coords)
+    for coord_name in coord_names:
+        if dim_coords.count(coord_name) > 0:
+            data = data.rename({coord_name : coord_name[0:3]})
+    return data
 
 def main():
 
-    # df_path = f'data/csv/climate/historical_prebas_sites.csv'
-    # df = pd.read_csv(df_path)
-    site_path = f'data/csv/site/plot_data.csv'
-    sites = pd.read_csv(site_path)
-    print(sites)
-    sites = sites.where(sites['domain'] == 'Picus_Prebas').dropna()
-    sites['PlgID'] = sites['PlgID'].astype(int)
-    # df = df.where(df['siteID'].isin(sites['PlgID'])).dropna()
-    # df[['siteID','climID']] = df[['siteID','climID']].astype(int)
-    # print(df)
-    # path = f'data/csv/climate/historical_only_prebas_picus_sites.csv'
-    # uf.write_df_to_csv(df, path, index=False)
+    start_year = 1979
+    end_year = 2100
+    lat = "latitud"
+    lon = "lon"
+    vars = ["pr","rsds","tas","tasmax","tasmin"]
+    vars = ["pr"]
+
+    coords_path = f"data/csv/site/coords_to_get.csv"
+    coords = pd.read_csv(coords_path)
+
+    netcdf_path = f"data/netcdf/CHELSA_EU/"
+    combined_path = f"{netcdf_path}combined/"
+
+    # data = xr.open_dataset(f"{netcdf_path}pr/chelsa_EU_pr_300arcsec_daily197901.nc")
+    data = xr.open_dataset("C:/Users/samu/Documents/yucatrote/projects/sweden-may23/data/netcdf/vars/tg/tg_ens_mean_0.1deg_reg_1995-2010_v27.0e.nc")
+    # data = vh.process_vars(vars,netcdf_path,coords,start_year,end_year)
+    data = rename_netcdf_longFormat_coords(data, ["latitude","longitude"])
+    # data = xr.open_mfdataset(
+    #         f"{combined_path}*.nc", compat="override",chunks='auto'
+    #     )
+    print(data)
+
+    # path = f"{combined_path}all_vars.nc"
+
+    # print(f"Writing to {path}")
+    # data.to_netcdf(path)
+    # print(f"Done.")
+
+
+    # # df_path = f'data/csv/climate/historical_prebas_sites.csv'
+    # # df = pd.read_csv(df_path)
+    # site_path = f'data/csv/site/plot_data.csv'
+    # sites = pd.read_csv(site_path)
+    # print(sites)
+    # sites = sites.where(sites['domain'] == 'Picus_Prebas').dropna()
+    # sites['PlgID'] = sites['PlgID'].astype(int)
+
+    # # df = df.where(df['siteID'].isin(sites['PlgID'])).dropna()
+    # # df[['siteID','climID']] = df[['siteID','climID']].astype(int)
+    # # print(df)
+    # # path = f'data/csv/climate/historical_only_prebas_picus_sites.csv'
+    # # uf.write_df_to_csv(df, path, index=False)
 
 
 
-    soil_path = f'data/csv/soil/soil_data_ids.csv'
-    soil_df = pd.read_csv(soil_path)
-    soil_df = soil_df.sort_values(['climID'])
-    soil_df = soil_df.where(soil_df['siteID'].isin(sites['PlgID'])).dropna()
-    soil_df[['siteID','climID']] = soil_df[['siteID','climID']].astype(int)
-    print(soil_df)
-    # path = f'data/csv/soil/soil_data_wp_picus_prebas_sites.csv'
-    # uf.write_df_to_csv(soil_df, path, index=False)
+    # soil_path = f'data/csv/soil/soil_data_ids_sorted.csv'
+    # soil_df = pd.read_csv(soil_path)
+    # new_soil_path = f'data/csv/soil/soil_data_wp_fc_gitlab_ids_sorted.csv'
+    # new_soil_df = pd.read_csv(new_soil_path)
+    # # soil_df = soil_df.sort_values(['climID'])
+    # new_soil_df = new_soil_df.where(new_soil_df['siteID'].isin(sites['PlgID'])).dropna()
+    # new_soil_df[['siteID','climID']] = new_soil_df[['siteID','climID']].astype(int)
+    # print(new_soil_df)
+
+    
+    # print(soil_df[['climID','siteID','AWC','FC', 'WP']])
+    # print(new_soil_df[['climID','siteID','AWC','FC', 'WP']])
+
+    # new_soil_df.rename(columns={'PlgID':'siteID'},inplace=True)
+    # new_soil_df = new_soil_df.merge(soil_df[['siteID','climID']])
+    # new_soil_df = new_soil_df.sort_values(['climID'])
+    # print(new_soil_df)
+    # path = f'data/csv/soil/soil_data_wp_fc_gitlab_ids_sorted.csv'
+    # uf.write_df_to_csv(new_soil_df, path, index=False)
 
     # print(soil_df[['WP','FC','AWC']])
 
@@ -48,9 +94,19 @@ def main():
     # # WILTING POINT AND FIELD CAPACITY FROM WILTING POINT 
     # soil_df['WP'] = soil_df.apply(lambda row: vh.get_wilting_point(vh.get_soil_param_a(row['sand'], row['clay']),vh.get_soil_param_b(row['sand'],row['clay'])),axis=1)
     # soil_df['FC'] = soil_df['AWC'] + soil_df['WP']
-    # # WILTING POINT AND FIELD CAPACITY FROM FIELD CAPACITY
-    # soil_df['FC'] = soil_df.apply(lambda row: vh.get_field_capacity(vh.get_soil_param_a(row['sand'], row['clay']),vh.get_soil_param_b(row['sand'],row['clay'])),axis=1) 
-    # soil_df['WP'] = soil_df['FC'] - soil_df['AWC']
+    # soil_from_fc_path = f'data/csv/soil/soil_data_ids_sorted.csv'
+    # soil_from_fc_df = pd.read_csv(soil_from_fc_path)
+    # # # WILTING POINT AND FIELD CAPACITY FROM FIELD CAPACITY
+    # soil_from_fc_df['FC'] = soil_from_fc_df.apply(lambda row: vh.get_field_capacity(vh.get_soil_param_a(row['sand'], row['clay']),vh.get_soil_param_b(row['sand'],row['clay'])),axis=1) 
+    # soil_from_fc_df['WP'] = soil_from_fc_df['FC'] - soil_from_fc_df['AWC']
+
+    # print('soil from wp')
+    # print(soil_df[['climID','siteID','AWC','FC', 'WP']])
+    # print('soil from fc')
+    # print(soil_from_fc_df[['climID','siteID','AWC','FC', 'WP']])
+    # print('soil from gitlab')
+    # print(new_soil_df[['climID','siteID','AWC','FC', 'WP']])
+    
     # # print(soil_df)
     # print(soil_df[['WP','FC','AWC']])
 
