@@ -10,12 +10,28 @@ import utility_functions as uf
 # NETCDF FOR EACH VARIABLE
 netcdfs = []
 
-def _preprocess_coords(x, coords, start_year = 2002, end_year = 2021):
+def _preprocess_bounds(x, coords, lon_bnds, lat_bnds, round_decimals = 2, start_year = 2002, end_year = 2021):
+    ds = x.where((x['time.year'] >= start_year) & (x['time.year'] <= end_year), drop=True)
+
+    # Remove unwanted data by coordinates
+    data = ds.where((ds.lat<=lat_bnds[1]) & (ds.lat>=lat_bnds[0]) & (ds.lon<=lon_bnds[1]) & (ds.lon>=lon_bnds[0]), drop=True)
+    # print(type(ds.lat))
+    # print(type(lat_bnds[1]))
+    # data = ds.where((ds['lat']<=lat_bnds[1]), drop=True)
+
+    return data
+
+
+def _preprocess_coords(x, coords, lon_bnds, lat_bnds, round_decimals = 2 ,start_year = 2002, end_year = 2021):
     data = x.where((x['time.year'] >= start_year) & (x['time.year'] <= end_year), drop=True)
     
-    # FILTER OUT UNNECESSARY COORDINATES
-    data = data.sel(lat = coords['lat'].to_xarray(), lon = coords['lon'].to_xarray(), method = 'nearest')
+    data = uf.round_coords(data, decimals = round_decimals)
 
+    # FILTER OUT UNNECESSARY COORDINATES WHILE KEEPING DIMENSIONS
+    new_lat =  data['lat'].sel( lat = coords['lat'].tolist(), method = 'nearest')
+    new_lon =  data['lon'].sel( lon = coords['lon'].tolist(), method = 'nearest')
+    data = data.sel(lat = new_lat, lon = new_lon)
+    
     return data
 
 def _preprocess_1_day_bounds(x, lon_bnds, lat_bnds, year, month=1, day=1):
@@ -138,20 +154,22 @@ def process_vars_and_aggregate(vars, lat_bnds, lon_bnds, var_path):
 
 
 # GET ONLY NECESSARY COORDS
-def process_vars(vars, var_path, coords, start_year=2002, end_year=2021):
+def process_vars(pre_function, vars, var_path, coords, lat_bnds, lon_bnds, round_decimals = 2, start_year=2002, end_year=2021):
 # PROCESS EACH VAR
     for v in vars:
         print(f'Processing variable {v}...')
         path = f"{var_path}{v}/"
+        
+        partial_func = partial(pre_function, coords=coords, lat_bnds= lat_bnds, lon_bnds = lon_bnds, round_decimals = round_decimals, 
+                               start_year = start_year, end_year = end_year)
 
         # OPEN ALL DATASETS AT ONCE
         data = xr.open_mfdataset(
-            f"{path}*.nc", combine='nested', concat_dim='time', chunks='auto'
+            f"{path}*.nc", combine='nested', preprocess = partial_func, chunks='auto',concat_dim='time'
         )
-
         # FILTER
-        data = data.where((data['time.year'] >= start_year) & (data['time.year'] <= end_year), drop=True)
-        data = data.sel( lat = coords['lat'].to_xarray(), lon = coords['lon'].to_xarray(), method = 'nearest')
+        # data = data.where((data['time.year'] >= start_year) & (data['time.year'] <= end_year), drop=True)
+        # data = data.sel( lat = coords['lat'].to_xarray(), lon = coords['lon'].to_xarray(), method = 'nearest')
 
         netcdfs.append(data)
         print(f'{v} done.')

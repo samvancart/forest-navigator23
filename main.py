@@ -23,33 +23,76 @@ def rename_netcdf_longFormat_coords(data, coord_names):
 
 def main():
 
-    start_year = 1979
-    end_year = 2100
-    lat = "latitud"
-    lon = "lon"
-    vars = ["pr","rsds","tas","tasmax","tasmin"]
-    vars = ["pr"]
-
     coords_path = f"data/csv/site/coords_to_get.csv"
     coords = pd.read_csv(coords_path)
 
     netcdf_path = f"data/netcdf/CHELSA_EU/"
     combined_path = f"{netcdf_path}combined/"
 
-    # data = xr.open_dataset(f"{netcdf_path}pr/chelsa_EU_pr_300arcsec_daily197901.nc")
-    data = xr.open_dataset("C:/Users/samu/Documents/yucatrote/projects/sweden-may23/data/netcdf/vars/tg/tg_ens_mean_0.1deg_reg_1995-2010_v27.0e.nc")
-    # data = vh.process_vars(vars,netcdf_path,coords,start_year,end_year)
-    data = rename_netcdf_longFormat_coords(data, ["latitude","longitude"])
-    # data = xr.open_mfdataset(
-    #         f"{combined_path}*.nc", compat="override",chunks='auto'
-    #     )
-    print(data)
 
+    start_year = 1979
+    end_year = 2100
+    round_decimals = 3
+    pre_function = vh._preprocess_coords
+    bnds = uf.get_bounds(coords)
+    lat_bnds, lon_bnds = bnds[0], bnds[1]
+
+    lat = "latitud"
+    lon = "lon"
+    vars = ["pr","rsds","tas","tasmax","tasmin"]
+    vars = ["tasmin"]
+
+
+
+    # data = xr.open_dataset(f"{netcdf_path}pr/chelsa_EU_pr_300arcsec_daily197901.nc")
+    # data = xr.open_dataset(f"{netcdf_path}rsds/chelsa_EU_rsds_300arcsec_daily197901.nc")
+    data = xr.open_dataset(f"{combined_path}all_vars.nc")
+    # data = xr.open_dataset("C:/Users/samu/Documents/yucatrote/projects/sweden-may23/data/netcdf/vars/tg/tg_ens_mean_0.1deg_reg_1995-2010_v27.0e.nc")
+    # data = rename_netcdf_longFormat_coords(data, ["latitude","longitude"])
+
+    # data = vh.process_vars(pre_function, vars,netcdf_path,coords, lat_bnds, lon_bnds, round_decimals, start_year,end_year)
+    
+    # data = xr.merge(data)
+    print(data)
+    # print(len(data.lat))
+    # print(len(data.lon))
+    # print(data.lat)
+    # print(type(coords['lat'].tolist()))
+    # print(len(data[0].lat))
+    # print(len(data[0].lon))
+    # print(data[0].lat)
+
+    # for i,d in enumerate(data):
+    #     print(i)
+    #     print(d)
+    
+
+    # path = f"{combined_path}{vars[0]}_coords.nc"
+    # print(f"Writing to {path}...")
+    # data[0].to_netcdf(path)
+    # print(f"{vars[0]} done.")
+
+    # for d in enumerate(data):
+    #     path = f"{combined_path}{vars[d[0]]}.nc"
+    #     print(f"Writing to {path}")
+    #     d[1].to_netcdf(path)
+    #     print(f"{vars[d[0]]} done.")
+
+
+
+    # data = xr.open_mfdataset(
+    #         f"{combined_path}*.nc", compat='override', chunks='auto'
+    #     )
+
+    # print(data)
     # path = f"{combined_path}all_vars.nc"
 
     # print(f"Writing to {path}")
     # data.to_netcdf(path)
     # print(f"Done.")
+
+
+
 
 
     # # df_path = f'data/csv/climate/historical_prebas_sites.csv'
