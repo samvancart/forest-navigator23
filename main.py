@@ -13,13 +13,8 @@ import variable_handler as vh
 import nan_handler as nh
 import climate_id as clid
 import utility_functions as uf
+import netcdf as nc
 
-def rename_netcdf_longFormat_coords(data, coord_names):
-    dim_coords = list(data.coords)
-    for coord_name in coord_names:
-        if dim_coords.count(coord_name) > 0:
-            data = data.rename({coord_name : coord_name[0:3]})
-    return data
 
 def main():
 
@@ -27,33 +22,84 @@ def main():
     coords = pd.read_csv(coords_path)
 
     netcdf_path = f"data/netcdf/CHELSA_EU/"
-    combined_path = f"{netcdf_path}combined/"
-
+    vars_path = f"{netcdf_path}combined/vars/"
+    combined_path = f"{netcdf_path}combined/all/"
+    file_name = "all_vars_test"
 
     start_year = 1979
     end_year = 2100
     round_decimals = 3
     pre_function = vh._preprocess_coords
     bnds = uf.get_bounds(coords)
-    lat_bnds, lon_bnds = bnds[0], bnds[1]
 
-    lat = "latitud"
+    lat = "lat"
     lon = "lon"
     vars = ["pr","rsds","tas","tasmax","tasmin"]
     vars = ["tasmin"]
 
+    # data = nc.combine_by_nearest_coords(
+    #     netcdf_path=netcdf_path, 
+    #     coords_path=coords_path,
+    #     pre_function=pre_function,
+    #     vars=vars,
+    #     round_decimals = round_decimals,
+    #     start_year = start_year, 
+    #     end_year = end_year,
+    #     lon=lon,
+    #     lat=lat, 
+    #     coords_lon=lon,
+    #     coords_lat=lat)
 
+
+
+     # STEP 1: PREPARE DF ACCORDING TO BOUNDS
+    nan_removal_path = f"data/csv/climate/eobs_1979_2022_with_nans.csv"
+    nans_removed_path = f"data/csv/climate/eobs_1979_2022_nans_removed.csv"
+
+    # data_eobs_bnds = nc.get_eobs_bounds(coords_path=coords_path,pre_function=vh._preprocess_bounds)
+    # print(data_eobs_bnds)
+    # df = nh.get_nan_removal_df(data_eobs_bnds)
+    # print(df)
+    # uf.write_df_to_csv(df, nan_removal_path)
+
+    # STEP 2: REMOVE ALL CLIMIDS WITH NANS 
+    # df = nh.remove_nan_ids(nan_removal_path)
+    df = pd.read_csv(nan_removal_path)
+    # df = nh.remove_nans_from_df(df)
+    # uf.write_df_to_csv(df, nans_removed_path)
+
+
+
+
+
+
+    
+    # data_chelsa = nc.get_chelsa(coords_path=coords_path, pre_function=pre_function)
+    # print(data_chelsa)
+    # path = f"{combined_path}chelsa_1979_2016_all_vars.nc"
+    # nc.write_file(data=data_chelsa,path=path)
+
+    # data_eobs = nc.get_eobs(coords_path=coords_path, pre_function=pre_function)
+    # print(data_eobs)
+    # path = f"C:/Users/samu/Documents/yucatrote/projects/sweden-may23/data/netcdf/combined/all/eobs_1979_2022_all_vars.nc"
+    # nc.write_file(data=data_eobs,path=path)
 
     # data = xr.open_dataset(f"{netcdf_path}pr/chelsa_EU_pr_300arcsec_daily197901.nc")
     # data = xr.open_dataset(f"{netcdf_path}rsds/chelsa_EU_rsds_300arcsec_daily197901.nc")
-    data = xr.open_dataset(f"{combined_path}all_vars.nc")
+    # data = xr.open_dataset(f"{combined_path}all_vars.nc")
+    # print(data)
+    # data = xr.open_dataset(f"{combined_path}all_vars_test.nc")
+    # print(data)
     # data = xr.open_dataset("C:/Users/samu/Documents/yucatrote/projects/sweden-may23/data/netcdf/vars/tg/tg_ens_mean_0.1deg_reg_1995-2010_v27.0e.nc")
     # data = rename_netcdf_longFormat_coords(data, ["latitude","longitude"])
+    
 
-    # data = vh.process_vars(pre_function, vars,netcdf_path,coords, lat_bnds, lon_bnds, round_decimals, start_year,end_year)
+
+    # data = vh.process_vars(pre_function, vars, netcdf_path, coords, round_decimals, start_year,end_year,
+    #                        lon=lon,lat=lat,coords_lat=lat,coords_lon=lon)
     
     # data = xr.merge(data)
-    print(data)
+    # print(data)
     # print(len(data.lat))
     # print(len(data.lon))
     # print(data.lat)

@@ -47,8 +47,23 @@ def get_all_vars_netcdf_with_bounds(function, vars, var_path, bnds):
     data = uf.write_netcdf(new)
 
     return data
-  
 
+# def get_all_vars_netcdf_with_bounds(function, vars, pre_function, coords, round_decimals, 
+#                                start_year, end_year, lat, lon,
+#                                coords_lat, coords_lon, bnds):
+    
+#     lat_bnds, lon_bnds = bnds[0], bnds[1]
+
+#     # PROCESS NETCDF
+#     netcdfs = function(pre_function,vars, coords=coords, round_decimals = round_decimals, 
+#                                start_year = start_year, end_year = end_year, lat = lat, lon = lon,
+#                                coords_lat=coords_lat, coords_lon=coords_lon,lat_bnds=lat_bnds,lon_bnds=lon_bnds)
+#     new = xr.merge(netcdfs)
+#     data = uf.write_netcdf(new)
+
+#     return data
+  
+    
 # 1B: CONVERT NETCDF TO DF
 def get_nan_removal_df(data):
     print(f'Converting to dataframe...')
